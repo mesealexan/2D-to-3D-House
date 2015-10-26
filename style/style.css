@@ -1,0 +1,30 @@
+body{
+    margin: 0px;
+    overflow: hidden;
+    padding: 0px;
+}
+
+#paperCanvas{
+    position: fixed;
+    top: 0px;
+    left: 0px;
+    width: 100%;
+    height: 100%;
+    z-index: 6;
+}
+
+#webGL{
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    z-index: 5;
+}
+#menu{
+    position: fixed;
+    z-index: 50;   
+}
+#props{
+    position: fixed;
+    top: 75px;
+    z-index: 50;  
+}

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title></title>
+    <link rel="stylesheet" type="text/css" href="style/style.css">
+    <script data-main="js/app" src="bower_components/requirejs/require.js"></script>
+
+</head>
+<body>
+<!--
+	<form id="menu">
+		Room Width:<br>
+		<input type="text" name="width" value="350">
+		<input type="button" value="Go" onclick="window.updateWalls(this.previousElementSibling.value,0,0)">
+		<br>
+		Room Height:<br>
+		<input type="text" name="length" value="500">
+		<input type="button" value="Go" onclick="window.updateWalls(0,this.previousElementSibling.value,0)">
+		<br>
+		Wall Thickness:<br>
+		<input type="text" name="length" value="35">
+		<input type="button" value="Go" onclick="window.updateWalls(0,0,this.previousElementSibling.value)">
+		
+	</form>
+	-->
+	<form id="props">
+		Width:<br>
+		<input type="text" name="width" value="N/A">
+		<input type="button" value="Go" onclick="window.updateThis(this.previousElementSibling.value,0,0)">
+		<br>
+		Height / Length:<br>
+		<input type="text" name="height" value="N/A">
+		<input type="button" value="Go" onclick="window.updateThis(0,this.previousElementSibling.value,0)">
+		<br>
+		Floor / Thickness:<br>
+		<input type="text" name="floor" value="N/A">
+		<input type="button" value="Go" onclick="window.updateThis(0,0,this.previousElementSibling.value)">
+		<br><br>
+		<input type="button" value="Add Window" onclick="window.addWindow()">
+		<br><br>
+		<input type="button" value="Add Door" onclick="window.addDoor()">
+	</form>
+    <canvas id="paperCanvas"></canvas>
+    <div id="webGL"></div>
+</body>
+</html>
