@@ -8,22 +8,6 @@
 
 </head>
 <body>
-<!--
-	<form id="menu">
-		Room Width:<br>
-		<input type="text" name="width" value="350">
-		<input type="button" value="Go" onclick="window.updateWalls(this.previousElementSibling.value,0,0)">
-		<br>
-		Room Height:<br>
-		<input type="text" name="length" value="500">
-		<input type="button" value="Go" onclick="window.updateWalls(0,this.previousElementSibling.value,0)">
-		<br>
-		Wall Thickness:<br>
-		<input type="text" name="length" value="35">
-		<input type="button" value="Go" onclick="window.updateWalls(0,0,this.previousElementSibling.value)">
-		
-	</form>
-	-->
 	<form id="props">
 		Width:<br>
 		<input type="text" name="width" value="N/A">
@@ -36,6 +20,14 @@
 		Floor / Thickness:<br>
 		<input type="text" name="floor" value="N/A">
 		<input type="button" value="Go" onclick="window.updateThis(0,0,this.previousElementSibling.value)">
+		<br>
+		Belongs to wall:<br>
+		<input type="text" name="wall" value="N/A">
+		<br>
+		Distance from left:<br>
+		<input type="text" name="dist" value="N/A">
+		<br><br>
+		<input type="button" value="Remove Opening" onclick="window.removeOpening()">
 		<br><br>
 		<input type="button" value="Add Window" onclick="window.addWindow()">
 		<br><br>

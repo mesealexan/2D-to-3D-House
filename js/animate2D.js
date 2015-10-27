@@ -9,7 +9,7 @@ define(["paper"], function(paper){
     canvas = document.getElementById('paperCanvas');
     
     paper.setup(canvas);
-    
+    var wall_thick = 40;
     var walls;
     var selected = undefined;
     var lastPoint = paper.view.center;
@@ -25,18 +25,18 @@ define(["paper"], function(paper){
     addWalls();
 
     var updateOpening = function (value, axis, angle) {
-		for (var i = windows.length - 1; i >= 0; i--) {
-			if (windows[i].rotation != angle) {
-				var number = windows[i].position[axis] - paper.view.center[axis];
+		for (var i = openings.length - 1; i >= 0; i--) {
+			if (openings[i].rotation != angle) {
+				var number = openings[i].position[axis] - paper.view.center[axis];
     			var sign = number?number<0?-1:1:0;
-    			windows[i].position[axis] = sign*value + paper.view.center[axis];
+    			openings[i].position[axis] = sign*value + paper.view.center[axis];
 			};
 		};	
-		for (var j = doors.length - 1; j >= 0; j--) {
-			if (doors[j].rotation != angle) {
-				var number = doors[j].position[axis] - paper.view.center[axis];
+		for (var j = openings.length - 1; j >= 0; j--) {
+			if (openings[j].rotation != angle) {
+				var number = openings[j].position[axis] - paper.view.center[axis];
     			var sign = number?number<0?-1:1:0;
-    			doors[j].position[axis] = sign*value + paper.view.center[axis];
+    			openings[j].position[axis] = sign*value + paper.view.center[axis];
 			};
 		};
     }
@@ -50,10 +50,9 @@ define(["paper"], function(paper){
 			if (Number(height)) { selected._size.Width = Number(height); }
 			if (Number(floor)) { selected._size.Floor = Number(floor); }	
 		} else {
-			console.log(width,height,floor)
 			if (Number(width)) { update(width,height,floor) }
 			if (Number(height)) { update(width,height,floor) }
-			if (Number(floor)) { update(width,height,floor) }	
+			if (Number(floor)) { return }	
 
 		}
 		updatePaper();
@@ -86,12 +85,12 @@ define(["paper"], function(paper){
     	}
     	if (!isNaN(Number(newThick)) && Number(newThick)!=0) {
     		walls.setStrokeWidth(Number(newThick));
-    		    	//	Update doors
-	    	for (var i = doors.length - 1; i >= 0; i--) {
-	    		doors[i]._size.width = Number(newThick) -2;
+    		    	//	Update openings
+	    	for (var i = openings.length - 1; i >= 0; i--) {
+	    		openings[i]._size.width = Number(newThick) -2;
 	    	};
-	    	for (var i = windows.length - 1; i >= 0; i--) {
-	    		windows[i]._size.width = Number(newThick) -2;
+	    	for (var i = openings.length - 1; i >= 0; i--) {
+	    		openings[i]._size.width = Number(newThick) -2;
 	    	};
     	}
     	paper.view.draw();
@@ -104,70 +103,80 @@ define(["paper"], function(paper){
     function clearEvents() {
 	    tool.onMouseMove = function(event) { return; }
 		tool.onMouseDown = function(event) { 
-			var hitResult = paper.project.hitTest(event.point, {fill: true, tolerance:30});
+			var hitResult = paper.project.hitTest(event.point, {fill:true, stroke: true, tolerance:30});
 			if(hitResult) {
-				if (hitResult.item && hitResult.item.type) { 
+				
+				if (hitResult.item && hitResult.type === 'fill' && hitResult.item._size) { 
 					selected = hitResult.item;
-				} else {
+					openings_menu.children[1].value = hitResult.item._size.height;
+					openings_menu.children[5].value = hitResult.item._size.Width;
+					openings_menu.children[9].value = hitResult.item._size.Floor;
+					openings_menu.children[13].value = hitResult.item.wall;
+					openings_menu.children[16].value = Number(hitResult.item.dist.toFixed(2));
+
+				} else if(hitResult.item && hitResult.type === 'stroke'){
 					selected = hitResult.item;
-					openings_menu.children[1].value = Math.abs(hitResult.item._segments[2]._point._x - hitResult.item._segments[1]._point._x);
-					openings_menu.children[5].value = Math.abs(hitResult.item._segments[0]._point._y - hitResult.item._segments[1]._point._y);
+					openings_menu.children[1].value = (hitResult.item._segments[2]._point._x - hitResult.item._segments[1]._point._x);
+					openings_menu.children[5].value = (hitResult.item._segments[0]._point._y - hitResult.item._segments[1]._point._y);
 					openings_menu.children[9].value = hitResult.item.style.strokeWidth;
+					openings_menu.children[13].value = undefined;
+					openings_menu.children[16].value = undefined;
 				}
 			}  else {
 					selected = undefined;
-					openings_menu.children[1].value = "N/A";
-					openings_menu.children[5].value = "N/A";
-					openings_menu.children[9].value = "N/A";
+					openings_menu.children[1].value = undefined;
+					openings_menu.children[5].value = undefined;
+					openings_menu.children[9].value = undefined;
+					openings_menu.children[13].value = undefined;
+					openings_menu.children[16].value = undefined;
 				}
 			return };
 		tool.onMousUp = function(event) { return };
     }
 
-    function checkDrawFailure() {
-    	if(doors.length!=doorCount) {
-    		doors[doors.length-1].remove();
-    	}
-    	if(windows.length!=windowsCount) {
-    		windows[windows.length-1].remove();
-    	}
-    }
 
 
-	var windows = [];
-	var windowsCount = 0;
 
 	tool.onMouseDrag = function(event) {
 		move(event);
 	}
-
+	function round10(x)
+	{
+	    return Math.ceil(x/10)*10;
+	}
+	function getWallsCurveByCount(count) {
+		for (var i = 0, l = walls.curves.length; i < l; i++) {
+			if(walls.curves[i].count === count)
+				return walls.curves[i];
+		};
+	}
 	var openig_selected = undefined;
 	var move = function(event) { 
 		var hitResult = paper.project.hitTest(event.point, {segments: true, stroke: true, fill: true, tolerance:20});
 		if (hitResult && hitResult.location){ // walls
 			if (hitResult.location._segment1.point.x - hitResult.location._segment2.point.x === 0) {
-				hitResult.location._segment1.point.x = hitResult.location._segment2.point.x = event.point.x;
-				for(var i=0,l=windows.length;i<l;i++) {
-					if(Math.abs(event.point.x - windows[i].position.x) < walls._style._values.strokeWidth) {
-						windows[i].position.x = event.point.x;
+				hitResult.location._segment1.point.x = hitResult.location._segment2.point.x = round10(event.point.x);
+				for(var i=0,l=openings.length;i<l;i++) {
+					if(Math.abs(event.point.x - openings[i].position.x) < walls._style._values.strokeWidth) {
+						openings[i].position.x = round10(event.point.x);
 					}
 				}
-				for(var j=0,k=doors.length;j<k;j++) {
-					if(Math.abs(event.point.x - doors[j].position.x) < walls._style._values.strokeWidth) {
-						doors[j].position.x = event.point.x;
+				for(var j=0,k=openings.length;j<k;j++) {
+					if(Math.abs(event.point.x - openings[j].position.x) < walls._style._values.strokeWidth) {
+						openings[j].position.x = round10(event.point.x);
 					}
 				}
 				
 			} else {
-				hitResult.location._segment1.point.y = hitResult.location._segment2.point.y = event.point.y;
-				for(var i=0,l=windows.length;i<l;i++) {
-					if(Math.abs(event.point.y - windows[i].position.y) < walls._style._values.strokeWidth) {
-						windows[i].position.y = event.point.y;
+				hitResult.location._segment1.point.y = hitResult.location._segment2.point.y = round10(event.point.y);
+				for(var i=0,l=openings.length;i<l;i++) {
+					if(Math.abs(event.point.y - openings[i].position.y) < walls._style._values.strokeWidth) {
+						openings[i].position.y =round10(event.point.y);
 					}
 				}
-				for(var j=0,k=doors.length;j<k;j++) {
-					if(Math.abs(event.point.y - doors[j].position.y) < walls._style._values.strokeWidth) {
-						doors[j].position.y = event.point.y;
+				for(var j=0,k=openings.length;j<k;j++) {
+					if(Math.abs(event.point.y - openings[j].position.y) < walls._style._values.strokeWidth) {
+						openings[j].position.y = round10(event.point.y);
 					}
 				}
 			}
@@ -175,76 +184,90 @@ define(["paper"], function(paper){
 			openings_menu.children[5].value = Math.abs(hitResult.item._segments[0]._point._y - hitResult.item._segments[1]._point._y);
 		} else if(hitResult && hitResult.item) {
 			if (hitResult.item.type) { // window or door
+				hitResult.item.dist = hitResult.item.position.getDistance(getWallsCurveByCount(hitResult.item.wall)._segment2.point)
 				if (hitResult.item.rotation!=90) {
-					hitResult.item.position.y = Math.round(event.point.y);
+					hitResult.item.position.y = round10(event.point.y);
 				} else {
-					hitResult.item.position.x = Math.round(event.point.x);
+					hitResult.item.position.x = round10(event.point.x);
 				}
 				openig_selected = hitResult.item;
+
+				openings_menu.children[13].value = hitResult.item.wall;
+				openings_menu.children[16].value = Number(hitResult.item.dist.toFixed(2));
 			}
 		}
 	}
 
 
+	window.removeOpening = function(){
+		if(selected && selected.wall>=0) {
+			for(var i=0,l=openings.length;i<l;i++){
+				if(openings[i].id === selected.id) {
+					openings[i].remove();
+					openings.splice(i,1);
+					count--
+				}
+			}
+			updatePaper();
+		}
+	}
 
 	var current_window;
+	var openings = [];
+	var count = 0;
+    function checkDrawFailure() {
+    	if(openings.length!=count) {
+    		openings[openings.length-1].remove();
+    	}
+    }
     window.addWindow = function(){	
     	checkDrawFailure();
     	var point = new paper.Point(0, 0);
-		var size = new paper.Size(walls._style._values.strokeWidth-2, 80);
-		windows[windowsCount] = new paper.Shape.Rectangle(point, size);
-		windows[windowsCount].type = 1;
-		windows[windowsCount].style = {
-		    fillColor: '#AEBACC',
-		    strokeColor: '#2E2E1C',
-		    strokeWidth: 2
+		var size = new paper.Size(walls._style._values.strokeWidth/3, 120);
+		openings[count] = new paper.Shape.Rectangle(point, size);
+		openings[count].type = 1;
+		openings[count].style = {
+		    fillColor: '#FFF',
+		    strokeColor: '#000',
+		    strokeWidth: 1,
+		    strokeJoin: 'miter'
 		};
-		current_window = windows[windowsCount];
+		current_window = openings[count];
 		current_window._size.Width = 120;
 		current_window._size.Floor = 90;
-		current_window.onMouseDown = function(event) {
-			openings_menu.children[1].value = this._size.height;
-			openings_menu.children[5].value = this._size.Width;
-			openings_menu.children[9].value = this._size.Floor;
-		}
+
 		var rotation = 0;
 		tool.onMouseMove = function(event){
 			var nearest = walls.getNearestPoint(event.point);
 			var point =  new paper.Point(Math.round(nearest.x), Math.round(nearest.y));
-			var hitResult = walls.hitTest(event.point, {stroke: true, tolerance:10000});
+			var hitResult = walls.hitTest(event.point, {stroke: true, tolerance:100});
 			if (hitResult) {
 				if (hitResult.location && hitResult.location._segment1._point.y == hitResult.location._segment2._point.y) {rotation = 90;}
 				else {rotation = 0;} 
-				windows[windowsCount].rotation = rotation
+				openings[count].rotation = rotation;
+				openings[count].wall = hitResult.location._curve.count;
+				openings[count].dist = hitResult.point.getDistance(hitResult.location._curve._segment2.point);
 			}
-	    	windows[windowsCount].position = point;
+	    	openings[count].position = point;
     	}	
     	tool.onMouseDown = function(event){
     		clearEvents();
-    		windowsCount++
+    		count++
     	}
     }
-
-    var doors = [];
- 	var doorCount = 0;
     window.addDoor = function(){	
     	checkDrawFailure()
     	var point = new paper.Point(0, 0);
 		var size = new paper.Size(walls._style._values.strokeWidth-2, 80);
-			doors[doorCount] = new paper.Shape.Rectangle(point, size);
-			doors[doorCount].type = 2;
-			doors[doorCount].style = {
-			    fillColor: '#927944',
+			openings[count] = new paper.Shape.Rectangle(point, size);
+			openings[count].type = 2;
+			openings[count].style = {
+			    fillColor: '#FFF',
 			    strokeColor: '#2E2E1C',
-			    strokeWidth: 2
+			    strokeWidth: 1
 			};
-			doors[doorCount]._size.Width = 210;
-			current_door = doors[doorCount];
-		current_door.onMouseDown = function(event) {
-			openings_menu.children[1].value = this._size.height;
-			openings_menu.children[5].value = this._size.Width;
-			openings_menu.children[9].value = 'N/A';
-		}
+			openings[count]._size.Width = 210;
+			current_door = openings[count];
 		tool.onMouseMove = function(event){
 	    	var nearest = walls.getNearestPoint(event.point);
 			var point =  new paper.Point(Math.round(nearest.x), Math.round(nearest.y));
@@ -252,28 +275,60 @@ define(["paper"], function(paper){
 			if (hitResult) {
 				if (hitResult.location && hitResult.location._segment1._point.y == hitResult.location._segment2._point.y) {rotation = 90;}
 				else {rotation = 0;} 
-				doors[doorCount].rotation = rotation
+				openings[count].rotation = rotation;
+				openings[count].wall = hitResult.location._curve.count;
+				openings[count].dist = hitResult.point.getDistance(hitResult.location._curve._segment2.point);
 			}
-	    	doors[doorCount].position = point;
+	    	openings[count].position = point;
     	}	
     	tool.onMouseDown = function(event){
-    		doorCount++
+    		count++
     		clearEvents()
     	}
     }
-
     function addWalls(){
 		var point = new paper.Point(0, 0);
-		var size = new paper.Size(350, 500);
+		var size = new paper.Size(400, 500);
 			walls = new paper.Path.Rectangle(point, size);
 			walls.style = {
 			    fillColor: '#E0F0FF',
 			    strokeColor: '#2E2E1C',
-			    strokeWidth: 35
+			    strokeWidth: wall_thick
 			};
 		walls.position = new paper.Point(paper.view.center.x, paper.view.center.y);
+		for (var i = 0, l = walls.curves.length; i < l; i++) {
+			walls.curves[i].count = i;
+			addDimensionLine(walls.curves[i]._segment1.point, walls.curves[i]._segment2.point, 20, count);
+		};
+		
 		paper.view.draw();
+    }
 
+    function addDimensionLine(from,to,offset, identifier) {
+    	/*
+    	offset = wall_thick/2 + offset
+    	if(from.x === to.x) {
+    		if(from.y >= to.y) {
+	 	      	var from = new paper.Point(from.x + offset, from.y - wall_thick/2);
+				var to =new paper.Point(to.x + offset, to.y + wall_thick/2); 			
+    		} else {
+				var from = new paper.Point(from.x - offset, from.y + wall_thick/2);
+				var to =new paper.Point(to.x - offset, to.y - wall_thick/2); 
+    		}  
+    	} else {
+    		if(from.x >= to.x) {
+	 	      	var from = new paper.Point(from.x - wall_thick/2, from.y - offset);
+				var to = new paper.Point(to.x + wall_thick/2, to.y - offset); 	
+    		} else {
+    			var from = new paper.Point(from.x + wall_thick/2, from.y + offset);
+				var to = new paper.Point(to.x - wall_thick/2, to.y + offset); 
+    		}
+    	}
+    			var path = new paper.Path.Line(from, to);
+				path.strokeColor = '#333';
+				path.count = identifier;
+				path.strokeWidth = 1; 
+				*/
     }
 
     return animate2D;
