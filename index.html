@@ -5,33 +5,34 @@
     <title></title>
     <link rel="stylesheet" type="text/css" href="style/style.css">
     <script data-main="js/app" src="bower_components/requirejs/require.js"></script>
-
 </head>
 <body>
 	<form id="props">
 		Width:<br>
 		<input type="text" name="width" value="N/A">
-		<input type="button" value="Go" onclick="window.updateThis(this.previousElementSibling.value,0,0)">
+		<input type="button" value="Go" onclick="window.update(this.previousElementSibling.value,0,0)">
 		<br>
 		Height / Length:<br>
 		<input type="text" name="height" value="N/A">
-		<input type="button" value="Go" onclick="window.updateThis(0,this.previousElementSibling.value,0)">
+		<input type="button" value="Go" onclick="window.update(0,this.previousElementSibling.value,0)">
 		<br>
 		Floor / Thickness:<br>
 		<input type="text" name="floor" value="N/A">
-		<input type="button" value="Go" onclick="window.updateThis(0,0,this.previousElementSibling.value)">
+		<input type="button" value="Go" onclick="window.update(0,0,this.previousElementSibling.value)">
 		<br>
 		Belongs to wall:<br>
-		<input type="text" name="wall" value="N/A">
+		<input type="text" disabled="true" name="wall" value="N/A">
 		<br>
 		Distance from left:<br>
-		<input type="text" name="dist" value="N/A">
+		<input type="text"  disabled="true" name="dist" value="N/A">
 		<br><br>
 		<input type="button" value="Remove Opening" onclick="window.removeOpening()">
 		<br><br>
-		<input type="button" value="Add Window" onclick="window.addWindow()">
+		<input type="button" value="Add Window" onclick="window.addOpening('window')">
 		<br><br>
-		<input type="button" value="Add Door" onclick="window.addDoor()">
+		<input type="button" value="Add Door" onclick="window.addOpening('door')">
+		<br><br>
+		<input type="button" value="Export" onclick="">
 	</form>
     <canvas id="paperCanvas"></canvas>
     <div id="webGL"></div>
