@@ -10,15 +10,15 @@
 	<form id="props">
 		Width:<br>
 		<input type="text" name="width" value="N/A">
-		<input type="button" value="Go" onclick="window.update(this.previousElementSibling.value,0,0)">
+		<input type="button" value="Go" onclick="window.Update(this.previousElementSibling.value,0,0)">
 		<br>
 		Height / Length:<br>
 		<input type="text" name="height" value="N/A">
-		<input type="button" value="Go" onclick="window.update(0,this.previousElementSibling.value,0)">
+		<input type="button" value="Go" onclick="window.Update(0,this.previousElementSibling.value,0)">
 		<br>
 		Floor / Thickness:<br>
 		<input type="text" name="floor" value="N/A">
-		<input type="button" value="Go" onclick="window.update(0,0,this.previousElementSibling.value)">
+		<input type="button" value="Go" onclick="window.Update(0,0,this.previousElementSibling.value)">
 		<br>
 		Belongs to wall:<br>
 		<input type="text" disabled="true" name="wall" value="N/A">
@@ -26,13 +26,13 @@
 		Distance from left:<br>
 		<input type="text"  disabled="true" name="dist" value="N/A">
 		<br><br>
-		<input type="button" value="Remove Opening" onclick="window.removeOpening()">
+		<input type="button" value="Remove Opening" onclick="window.RemoveOpening()">
 		<br><br>
-		<input type="button" value="Add Window" onclick="window.addOpening('window')">
+		<input type="button" value="Add Window" onclick="window.AddOpening('window')">
 		<br><br>
-		<input type="button" value="Add Door" onclick="window.addOpening('door')">
+		<input type="button" value="Add Door" onclick="window.AddOpening('door')">
 		<br><br>
-		<input type="button" value="Export" onclick="">
+		<input type="button" value="Export" onclick="window.Export()">
 	</form>
     <canvas id="paperCanvas"></canvas>
     <div id="webGL"></div>
