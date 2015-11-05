@@ -9,10 +9,13 @@ define(["three", "paper", "animate2D", "animate3D"], function(three, paper, anim
     /***public functions***/
     
     main.InitPaper = function(){
-        //animate2D.canvas = document.getElementById('paperCanvas');
-        //paper.setup(animate2D.canvas);
-        //addTestText();
-        //paper.view.onFrame = animate2D.onFrame;
+        animate2D.init();
+        animate2D.addEvents();
+        
+        window.AddOpening = animate2D.createOpening;
+        window.RemoveOpening = animate2D.removeOpening;
+        window.Update = animate2D.updateFromMenu;
+        window.Export = animate2D.gather;
     };
 
     main.InitThree = function(){

@@ -1,27 +1,60 @@
 define(["paper"], function(paper){
+//	Local varialbles
     var animate2D = {};
 
-    canvas = document.getElementById('paperCanvas');
-    paper.setup(canvas);
-
-	var tool = new paper.Tool();
+    var tool;
     var wall_thick = 40;
     var walls;
     var selected = undefined;
-    var lastPoint = paper.view.center;
+    var lastPoint;
 	var hitResult;
 	var openings = [];
 	var count = 0;
 	var dimension_offset = 50;
 	var opening_dimension;
 	var points_to_measure = [];
-//	Global functions
-	window.onresize = function() {
-		paper.view.setViewSize(canvas.clientWidth, canvas.clientHeight);
-		paper.view.scrollBy(lastPoint.subtract(paper.view.center));
-		lastPoint = paper.view.center;
-	}  
-	window.Update = function(width,height,floor) {
+	var dimensions;
+
+//	Global functions  
+	//	needs to be called first to append to dom and create basic variables
+    animate2D.init = function() {
+	    canvas = document.getElementById('paperCanvas');
+	    paper.setup(canvas);
+	    lastPoint = paper.view.center;
+	    addWalls();
+    }
+    //	Call after init to place events
+    animate2D.addEvents = function() {
+    	//	This event is placed on window to stretch paper on window resize
+		window.onresize = function() {
+			paper.view.setViewSize(canvas.clientWidth, canvas.clientHeight);
+			paper.view.scrollBy(lastPoint.subtract(paper.view.center));
+			lastPoint = paper.view.center;
+		}
+
+	    tool = new paper.Tool();
+    	defaultEvent();
+    	tool.onMouseDrag = function(event){drag(event)};
+    	//	Overwrites the menu values
+    	fill_menu("width",undefined);
+		fill_menu("height",undefined);
+		fill_menu("floor",undefined);
+		fill_menu("wall",undefined);
+		fill_menu("dist",undefined);
+    }
+    //	clears all  events
+    animate2D.clearEvents = function() {
+    	tool.remove();
+    	tool = undefined;
+    	window.onresize = function(){return};
+    }
+    //	Use to zoom in/out the scene
+    animate2D.zoom = function(value) {
+    	paper.view.zoom = value;
+    	updatePaper();
+    }
+    //	Update walls, and/or windows from menu input
+    animate2D.updateFromMenu = function(width,height,floor){
 		if(opening_dimension) {
 			opening_dimension.removeChildren();
 			opening_dimension.remove();
@@ -45,10 +78,10 @@ define(["paper"], function(paper){
 			if (Number(floor)) { return }	
 				createDimension(walls)
 		}
-		
-		paper.view.draw();
-	}	 
-	window.AddOpening = function(type) {
+		updatePaper();
+    }
+    //	Creates new type of opening
+    animate2D.createOpening = function(type) {	//	type can be window or door
 		if(selected) {
 			if(selected.dimension) {
 				selected.dimension.removeChildren();
@@ -57,7 +90,6 @@ define(["paper"], function(paper){
 			selected.selected = false;
 			selected = undefined;
 		}
-		
     	checkDrawFailure();
     	if (type === 'window') {
 	       	openings[count] = new paper.CompoundPath({
@@ -101,16 +133,15 @@ define(["paper"], function(paper){
     	openings[count].bringToFront()
     	openings[count].rotation = 90; 
 		var last_wall = 1;
-
-			selected = openings[count];
-			selected.selected = true;
-			fill_menu("width",selected.sizes.width);
-			fill_menu("height",selected.sizes.height);
-			if (selected.sizes.floor) {
-				fill_menu("floor",selected.sizes.floor);
-			} else {
-				fill_menu("floor",undefined);
-			}
+		selected = openings[count];
+		selected.selected = true;
+		fill_menu("width",selected.sizes.width);
+		fill_menu("height",selected.sizes.height);
+		if (selected.sizes.floor) {
+			fill_menu("floor",selected.sizes.floor);
+		} else {
+			fill_menu("floor",undefined);
+		}
 		tool.onMouseMove = function(event){
 			if(selected.dimension) {
 				selected.dimension.removeChildren();
@@ -147,27 +178,10 @@ define(["paper"], function(paper){
 			}
     		defaultEvent();
     		count++
-    	}    	
+    	}     	
     }
-
-    var all_house = {};
-    	all_house.wall_points = [];
-    	all_house.openings = [];
-
-    window.Export = function(){
-    	for(var i=0,l=walls.segments.length;i<l;i++) {
-    		all_house.wall_points[i] = walls.segments[i].point
-    	}
-    	for(var j=0,l=openings.length;j<l;j++) {
-    		all_house.openings[j] = {};
-    		all_house.openings[j].sizes = openings[j].sizes;
-    		all_house.openings[j].type = openings[j].type;
-    		all_house.openings[j].wall = openings[j].wall;
-    		all_house.openings[j].dist = Number(openings[j].dist.toFixed(1));
-    	}
-    	console.log(all_house)
-    }
-	window.RemoveOpening = function(){
+    //	Removes selected or position NA opening
+    animate2D.removeOpening = function() {
 		if(opening_dimension) {
 			opening_dimension.removeChildren();
 			opening_dimension.remove();
@@ -184,12 +198,53 @@ define(["paper"], function(paper){
 					count--
 				}
 			}
-			paper.view.draw();
+			updatePaper();
 		}
-	}
-//	Local Functions
-	var dimensions;
-	function createDimension(walls) {
+    }
+    //	Extracts all information for usage in 3D
+    animate2D.gather = function() {
+    	var all_house = {};
+	    	all_house.wall = {};
+	    	all_house.openings = [];
+	    	all_house.wall.points = [];
+	    	all_house.wall.thickness = 40;
+
+    	for(var i=0,l=walls.segments.length;i<l;i++) {
+    		all_house.wall.points[i] = walls.segments[i].point
+    	}
+    	for(var j=0,k=0,l=openings.length;j<l;j++) {
+    		if(openings[j]) {
+	    		var plm = {};
+		    		plm.sizes = openings[j].sizes;
+		    		plm.type = openings[j].type;
+		    		plm.wall = openings[j].wall;
+		    		plm.dist = Number(openings[j].dist.toFixed(2));
+	    		all_house.openings.push(plm);
+    		} 
+    	}
+    	console.log(all_house)
+    	return all_house
+    }
+
+//	Internal Functions	 
+    var addWalls = function(){
+		var point = new paper.Point(0, 0);
+		var size = new paper.Size(400, 500);
+			walls = new paper.Path.Rectangle(point, size);
+			walls.style = {
+			    fillColor: '#E0F0FF',
+			    strokeColor: '#2E2E1C',
+			    strokeWidth: 40
+			};
+		walls.position = new paper.Point(paper.view.center.x, paper.view.center.y);
+		for (var i = 0, l = walls.curves.length; i < l; i++) {
+			walls.curves[i].count = i;
+		};
+		createDimension(walls)
+		walls.sendToBack()
+		updatePaper();
+    }
+	var createDimension = function(walls) {
 		for (var i = 0, l = walls.curves.length; i < l; i++) {
 			walls.curves[i].count = i;
 			var x_multiply = 1, y_multiply = 0;
@@ -214,13 +269,11 @@ define(["paper"], function(paper){
 			}
 			var from = new paper.Point(walls.curves[i]._segment1.point.x - 20*y_multiply,walls.curves[i]._segment1.point.y + 20*x_multiply);
 			var to = new paper.Point(walls.curves[i]._segment2.point.x + 20*y_multiply,walls.curves[i]._segment2.point.y - 20*x_multiply);
-
 			if(walls.curves[i].dimension) {
 				walls.curves[i].dimension.removeChildren();
 				walls.curves[i].dimension.remove();
 				walls.curves[i].text.remove();
 			}
-
 			walls.curves[i].dimension = new paper.CompoundPath({
 			    children: [
 			        new paper.Path.Line({
@@ -252,8 +305,7 @@ define(["paper"], function(paper){
 		};
 		return dimensions;
 	}
-
-	function createOpeningDimension(opening) {
+	var createOpeningDimension = function(opening) {
 		var x_multiply = 1, y_multiply = 0;
 			var justification = 'center'
 			switch(opening.wall) {
@@ -350,98 +402,64 @@ define(["paper"], function(paper){
 			    ]
 			});
 	}
-
-    var addWalls = function(){
-		var point = new paper.Point(0, 0);
-		var size = new paper.Size(400, 500);
-			walls = new paper.Path.Rectangle(point, size);
-			walls.style = {
-			    fillColor: '#E0F0FF',
-			    strokeColor: '#2E2E1C',
-			    strokeWidth: 40
-			};
-		walls.position = new paper.Point(paper.view.center.x, paper.view.center.y);
-
-		for (var i = 0, l = walls.curves.length; i < l; i++) {
-			walls.curves[i].count = i;
-
-		};
-		createDimension(walls)
-		walls.sendToBack()
-		paper.view.draw();
-    }
-    addWalls();
 	var updateWalls = function(newWidth, newHeight, floor) {
     	checkDrawFailure();
     	if (!isNaN(Number(newWidth)) && Number(newWidth)!=0) {
-    		var value = Number(newWidth) / 2;   
-    		//	Upper Left
+    		var value = Number(newWidth) / 2; 
     		walls._segments[1].point.x = -value + paper.view.center.x;
-    		//	Lower Left
     		walls._segments[0].point.x = -value + paper.view.center.x;
-    		//	Upper Right
     		walls._segments[2].point.x = value + paper.view.center.x;
-    		//	Lower Right
     		walls._segments[3].point.x = value + paper.view.center.x;
-
     		updateOpening();
     	}
     	if (!isNaN(Number(newHeight)) && Number(newHeight)!=0) {
     		var value = Number(newHeight) / 2;
-    		//	Upper Left
     		walls._segments[1].point.y = -value + paper.view.center.y;
-    		//	Lower Left
     		walls._segments[0].point.y = value + paper.view.center.y;
-    		//	Upper Right
     		walls._segments[2].point.y = -value + paper.view.center.y;
-    		//	Lower Right
     		walls._segments[3].point.y = value + paper.view.center.y;
-
     		updateOpening();
     	}
 
-    	paper.view.draw();
+    	updatePaper();
 	}
     var updateOpening = function () {
     	for (var i=0,l=openings.length;i<l;i++) {
-    		if (walls.curves[openings[i].wall]._segment2._point._x === walls.curves[openings[i].wall]._segment1._point._x) {
-    			openings[i].position.x = walls.curves[openings[i].wall]._segment2._point._x;
-    		} else {
-    			openings[i].position.y = walls.curves[openings[i].wall]._segment2._point._y;
+    		if(openings[i]) {
+    			var current_curve = walls.curves[openings[i].wall];
+    			if (current_curve._segment2._point._x === current_curve._segment1._point._x) { openings[i].position.x = current_curve._segment2._point._x; } 
+    			else { openings[i].position.y = current_curve._segment2._point._y; }
+	    		var d1 = openings[i].position.getDistance(current_curve._segment1.point);
+	    		var d2 = openings[i].position.getDistance(current_curve._segment2.point);
+	    		var limit = getWallsCurveByCount(openings[i].wall)._segment2.point.getDistance(getWallsCurveByCount(openings[i].wall)._segment1.point);	
+	    		console.log(d1,d2,d1+d2,limit)
+	    		if (d1 > 40 && d2 > 40 && d1+d2==limit) { /* do nothing */ } 
+	    		else {
+		    		openings[i].removeChildren();
+		    		openings[i].remove();
+					openings[i] = undefined;
+		    	}
     		}
     	}
+    	updatePaper();
     }
     var fill_menu = function (field, value) {
-    	//field can be "width", "height", "floor", "wall", "dist"
+    	//field is the name of the div and can be "width", "height", "floor", "wall", "dist"
     	document.getElementsByName(field)[0].value = value
     }
-    fill_menu("width",undefined);
-	fill_menu("height",undefined);
-	fill_menu("floor",undefined);
-	fill_menu("wall",undefined);
-	fill_menu("dist",undefined);
     var updatePaper = function(){ paper.view.draw(); }
 	var round10 = function(x) { return Math.ceil(x/10)*10; }
 	var getWallsCurveByCount = function(count) {
 		for (var i = 0, l = walls.curves.length; i < l; i++) {
-			if(walls.curves[i].count === count)
-				return walls.curves[i];
+			if(walls.curves[i].count === count) return walls.curves[i];
 		};
 	}
     var checkDrawFailure = function() {
-    	if(openings.length!=count) {
-    		openings[openings.length-1].remove();
-    	}
     	if(selected && selected.dimension) {
-				selected.dimension.removeChildren();
-				selected.dimension.remove();
-			}
-    	/*
-    	if (selected && selected.selected) {
-			selected.selected = false;
-		}*/
+			selected.dimension.removeChildren();
+			selected.dimension.remove();
+		}
     }
-//	Events
     var defaultEvent = function() {
 	    tool.onMouseMove = function(event) { return; }
 		tool.onMouseDown = function(event) { 
@@ -451,9 +469,7 @@ define(["paper"], function(paper){
 			}
 			hitResult = paper.project.hitTest(event.point, {fill:true, stroke: true, tolerance:3});
 			if(hitResult) { // something selected
-				if (selected && selected.selected) {
-					selected.selected = false;
-				}
+				if (selected && selected.selected) { selected.selected = false; }
 				if (hitResult.item.type || hitResult.item._parent.type) {  // window or door
 					createOpeningDimension(hitResult.item);
 					var this_one = undefined;
@@ -482,9 +498,7 @@ define(["paper"], function(paper){
 					selected.selected = true;
 				}
 			}  else {
-				if (selected && selected.selected) {
-						selected.selected = false;
-					}
+				if (selected && selected.selected) { selected.selected = false; }
 					selected = undefined;
 					fill_menu("width",undefined);
 					fill_menu("height",undefined);
@@ -494,31 +508,23 @@ define(["paper"], function(paper){
 				}
 			return };
 		tool.onMousUp = function(event) { return };
-    }
-    defaultEvent();
-	tool.onMouseDrag = function(event) {
+    }		
+	var drag = function(event) {
 		if(opening_dimension) {
 			opening_dimension.removeChildren();
 			opening_dimension.remove();
 		}
-		if (selected && selected.selected) {
-			selected.selected = false;
-		}
+		if (selected && selected.selected) { selected.selected = false; }
 		if (hitResult && hitResult.location && hitResult.location._curve.count>=0){ // walls
 			if (hitResult.location._segment1.point.x - hitResult.location._segment2.point.x === 0) {
 				hitResult.location._segment1.point.x = hitResult.location._segment2.point.x = round10(event.point.x);
-				for(var i=0,l=openings.length;i<l;i++) {
-					if(hitResult.location._curve.count === openings[i].wall) {
-						openings[i].position.x = round10(event.point.x);
-					}
+				for(var i=0,l=openings.length;i<l;i++) { //	Update openings
+					if(openings[i] && hitResult.location._curve.count === openings[i].wall) { openings[i].position.x = round10(event.point.x); }
 				}
-				
 			} else {
 				hitResult.location._segment1.point.y = hitResult.location._segment2.point.y = round10(event.point.y);
-				for(var i=0,l=openings.length;i<l;i++) {
-					if(hitResult.location._curve.count === openings[i].wall) {
-						openings[i].position.y =round10(event.point.y);
-					}
+				for(var i=0,l=openings.length;i<l;i++) {//	Update openings
+					if(openings[i] && hitResult.location._curve.count === openings[i].wall) { openings[i].position.y = round10(event.point.y); }
 				}
 			}
 			selected = hitResult.item;
@@ -528,20 +534,22 @@ define(["paper"], function(paper){
 			createDimension(walls)
 		} else if(hitResult && hitResult.item) {
 			if (hitResult.item.type) { // window or door
-				//console.log(hitResult.item.position.getDistance(getWallsCurveByCount(hitResult.item.wall)._segment2.point))
-				//console.log(hitResult.item.position.getDistance(getWallsCurveByCount(hitResult.item.wall)._segment1.point))
-				createOpeningDimension(hitResult.item);
-				hitResult.item.dist = hitResult.item.position.getDistance(getWallsCurveByCount(hitResult.item.wall)._segment2.point);
-				if (hitResult.item.wall === 0 || hitResult.item.wall === 2) {
-					hitResult.item.position.y = (event.point.y);
+				var d1 = hitResult.item.position.getDistance(getWallsCurveByCount(hitResult.item.wall)._segment2.point);
+				var d2 = hitResult.item.position.getDistance(getWallsCurveByCount(hitResult.item.wall)._segment1.point);
+				var limit = getWallsCurveByCount(hitResult.item.wall)._segment2.point.getDistance(getWallsCurveByCount(hitResult.item.wall)._segment1.point);
+				if (d1 > 40 && d2 > 40 && d1+d2==limit) {
+					if (hitResult.item.wall === 0 || hitResult.item.wall === 2) { hitResult.item.position.y = event.point.y; } 
+					else { hitResult.item.position.x = event.point.x; }
+					hitResult.item.dist = hitResult.item.position.getDistance(getWallsCurveByCount(hitResult.item.wall)._segment2.point);
+					selected = hitResult.item;
+					selected.selected = true;
+					createOpeningDimension(hitResult.item);
+					fill_menu("wall",hitResult.item.wall);
+					fill_menu("dist",Number(hitResult.item.dist.toFixed(2)));
 				} else {
-					hitResult.item.position.x = (event.point.x);
-				}
-				selected = hitResult.item;
-				selected.selected = true;
-
-				fill_menu("wall",hitResult.item.wall);
-				fill_menu("dist",Number(hitResult.item.dist.toFixed(2)));
+					window.RemoveOpening();
+					hitResult = undefined;
+				}	
 			}
 		}
 	}
